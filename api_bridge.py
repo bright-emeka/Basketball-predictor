@@ -4,15 +4,9 @@ import os
 from typing import List
 from prediction_logic import GameData
 
-import requests
-import time
-import os
-from typing import List
-from prediction_logic import GameData
-
 class BasketballAPI:
     def __init__(self, api_key: str = None):
-        self.api_key = api_key or os.getenv('API_SPORTS_KEY')
+        self.api_key = api_key or "13c1251bdfb2edb287354c625b3afe11"
         if not self.api_key:
             raise ValueError("API_SPORTS_KEY not provided or environment variable not set")
         self.base_url = "https://v1.basketball.api-sports.io"
@@ -25,19 +19,35 @@ class BasketballAPI:
         response.raise_for_status()
         return response.json()
 
-    def get_team_id(self, name: str) -> int:
-        data = self._make_request("teams", {"name": name})
-        if data.get('results', 0) > 0:
-            return data['response'][0]['id']
-        else:
-            raise ValueError(f"Team '{name}' not found")
+    def get_team_id(self, name: str):
+        url = f"{self.base_url}/teams?search={name}"
+        response = requests.get(url, headers=self.headers)
+        response.raise_for_status()
+        data = response.json()
 
-    def get_last_games(self, team_id: int, last: int = 10) -> List[GameData]:
-        data = self._make_request("games", {"team": team_id, "last": last})
+        if data.get('results', 0) > 0 and isinstance(data.get('response'), list):
+            return int(data['response'][0]['id'])
+        return None
+
+    def get_last_games(self, team_id: int, season: int = 2025):
+        if team_id is None:
+            return []
+
+        team_id = int(team_id)
+        season = int(season)
+        url = f"{self.base_url}/games?team={team_id}&season={season}"
+        response = requests.get(url, headers=self.headers)
+        response.raise_for_status()
+        data = response.json()
+
+        response_list = data.get('response')
+        if not isinstance(response_list, list):
+            return []
+
         games = []
-        for game in data.get('response', []):
+        for game in response_list:
             scores = game.get('scores', {})
-            if 'home' in scores and 'quarter_1' in scores['home']:
+            if 'home' in scores and 'quarter_1' in scores['home'] and 'away' in scores:
                 game_data = {
                     'Q1': scores['home']['quarter_1'] + scores['away']['quarter_1'],
                     'Q2': scores['home']['quarter_2'] + scores['away']['quarter_2'],
@@ -45,23 +55,27 @@ class BasketballAPI:
                     'Q4': scores['home']['quarter_4'] + scores['away']['quarter_4'],
                 }
                 games.append(game_data)
-            else:
-                raise ValueError("League does not support quarter breakdowns")
+
         return games
 
-    def get_h2h_games(self, team_a_id: int, team_b_id: int) -> List[GameData]:
-        data = self._make_request("games", {"h2h": f"{team_a_id}-{team_b_id}"})
-        games = []
-        for game in data.get('response', []):
-            scores = game.get('scores', {})
-            if 'home' in scores and 'quarter_1' in scores['home']:
-                game_data = {
-                    'Q1': scores['home']['quarter_1'] + scores['away']['quarter_1'],
-                    'Q2': scores['home']['quarter_2'] + scores['away']['quarter_2'],
-                    'Q3': scores['home']['quarter_3'] + scores['away']['quarter_3'],
-                    'Q4': scores['home']['quarter_4'] + scores['away']['quarter_4'],
-                }
-                games.append(game_data)
-            else:
-                raise ValueError("League does not support quarter breakdowns")
-        return games
+    def get_h2h_games(self, team_a_id: int, team_b_id: int):
+        try:
+            data = self._make_request("games", {"h2h": f"{int(team_a_id)}-{int(team_b_id)}"})
+            response = data.get('response')
+            if not isinstance(response, list):
+                return []
+
+            games = []
+            for game in response:
+                scores = game.get('scores', {})
+                if 'home' in scores and 'quarter_1' in scores['home']:
+                    game_data = {
+                        'Q1': scores['home']['quarter_1'] + scores['away']['quarter_1'],
+                        'Q2': scores['home']['quarter_2'] + scores['away']['quarter_2'],
+                        'Q3': scores['home']['quarter_3'] + scores['away']['quarter_3'],
+                        'Q4': scores['home']['quarter_4'] + scores['away']['quarter_4'],
+                    }
+                    games.append(game_data)
+            return games
+        except Exception:
+            return []

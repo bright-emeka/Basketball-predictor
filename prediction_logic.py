@@ -48,3 +48,28 @@ def predict_highest_scoring_quarter(matchup: Matchup) -> Tuple[str, float]:
     total_counts = sum(combined_counts.values())
     confidence = max_count / total_counts if total_counts > 0 else 0.0
     return predicted, confidence
+
+def calculate_lowest_scoring_quarter(games: List[GameData]) -> Tuple[str, float]:
+    """Calculate the lowest scoring quarter based on average points across all games."""
+    quarters = ['Q1', 'Q2', 'Q3', 'Q4']
+    
+    # Safety check: ensure all games have valid quarter data
+    for game in games:
+        if not all(q in game for q in quarters):
+            return None, None
+    
+    # Calculate average points per quarter
+    quarter_totals = {'Q1': 0, 'Q2': 0, 'Q3': 0, 'Q4': 0}
+    for game in games:
+        for q in quarters:
+            quarter_totals[q] += game[q]
+    
+    # Calculate averages
+    num_games = len(games)
+    quarter_averages = {q: quarter_totals[q] / num_games for q in quarters}
+    
+    # Find the lowest scoring quarter
+    lowest_quarter = min(quarter_averages, key=quarter_averages.get)
+    lowest_average = quarter_averages[lowest_quarter]
+    
+    return lowest_quarter, lowest_average
