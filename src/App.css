@@ -1,0 +1,123 @@
+.app-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+  font-family: Arial, sans-serif;
+  color: #1d1d1d;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+header h1 {
+  font-size: clamp(1.8rem, 2.2vw, 2.8rem);
+  margin: 0;
+}
+
+.form-panel {
+  background: #f8f9fb;
+  border: 1px solid #dde2ea;
+  border-radius: 18px;
+  padding: 1.5rem;
+  box-shadow: 0 12px 35px rgba(15, 23, 42, 0.05);
+}
+
+label {
+  display: block;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+input {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  margin-top: 0.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.teams-row {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.versus {
+  font-weight: 800;
+  font-size: 1.2rem;
+  text-align: center;
+}
+
+.button-row {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+button {
+  padding: 0.95rem 1rem;
+  border: none;
+  border-radius: 12px;
+  background: #2f6ce5;
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+button:hover {
+  background: #2557c0;
+}
+
+.status,
+.error,
+.output {
+  margin-top: 1.25rem;
+  padding: 1rem 1rem;
+  border-radius: 14px;
+}
+
+.status {
+  background: #eef4ff;
+  color: #1f4dbb;
+  border: 1px solid #dbe8ff;
+}
+
+.error {
+  background: #ffe8e6;
+  color: #972218;
+  border: 1px solid #f5c2c0;
+}
+
+.output {
+  background: #f4f8f9;
+  color: #0f172a;
+  border: 1px solid #d9e2e7;
+}
+
+footer {
+  margin-top: 1.75rem;
+  text-align: center;
+  color: #475569;
+}
+
+footer a {
+  color: #2f6ce5;
+  text-decoration: none;
+}
+
+@media (max-width: 700px) {
+  .teams-row {
+    grid-template-columns: 1fr;
+  }
+
+  .versus {
+    display: none;
+  }
+}
