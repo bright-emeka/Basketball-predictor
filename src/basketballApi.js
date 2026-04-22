@@ -1,121 +1,67 @@
 export class BasketballAPI {
   constructor(apiKey) {
     this.apiKey = apiKey;
-    if (!this.apiKey) {
-      throw new Error('API-Sports API key is required');
-    }
     this.baseUrl = 'https://v1.basketball.api-sports.io';
     this.headers = {
       'x-apisports-key': this.apiKey,
+      'x-rapidapi-host': 'v1.basketball.api-sports.io',
     };
   }
 
-  async _fetch(endpoint, params) {
-    const query = params
-      ? `?${new URLSearchParams(params).toString()}`
-      : '';
-    const response = await fetch(`${this.baseUrl}/${endpoint}${query}`, {
-      headers: this.headers,
-    });
+  /**
+   * Searches for a team ID by name.
+   * Note: This searches across all leagues.
+   */
+  async getTeamId(teamName) {
+    try {
+      const response = await fetch(`${this.baseUrl}/teams?search=${encodeURIComponent(teamName)}`, {
+        method: 'GET',
+        headers: this.headers,
+      });
+      const data = await response.json();
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`);
+      if (data.response && data.response.length > 0) {
+        // We take the first match. You could refine this to check for specific leagues.
+        return data.response[0].id;
+      }
+      return null;
+    } catch (error) {
+      console.error(`Error fetching team ID for ${teamName}:`, error);
+      throw error;
     }
-
-    return response.json();
   }
 
-  async getTeamId(name) {
-    const data = await this._fetch('teams', { search: name });
-    if (data?.results > 0 && Array.isArray(data.response)) {
-      return Number(data.response[0].id);
-    }
-    return null;
-  }
-
-  async getLastGames(teamId, season = 2025) {
-    if (teamId == null) {
+  /**
+   * Fetches the last 'n' games for a specific team.
+   */
+  async getLastGames(teamId, limit = 10) {
+    try {
+      const response = await fetch(`${this.baseUrl}/games?team=${teamId}&last=${limit}`, {
+        method: 'GET',
+        headers: this.headers,
+      });
+      const data = await response.json();
+      return data.response || [];
+    } catch (error) {
+      console.error(`Error fetching last games for team ${teamId}:`, error);
       return [];
     }
-    const data = await this._fetch('games', {
-      team: teamId,
-      season,
-    });
-
-    if (!Array.isArray(data.response)) {
-      return [];
-    }
-
-    return data.response
-      .map((game) => {
-        const scores = game.scores || {};
-        if (!scores.home || !scores.away) {
-          return null;
-        }
-        const home = scores.home;
-        const away = scores.away;
-        if (
-          home.quarter_1 == null ||
-          home.quarter_2 == null ||
-          home.quarter_3 == null ||
-          home.quarter_4 == null ||
-          away.quarter_1 == null ||
-          away.quarter_2 == null ||
-          away.quarter_3 == null ||
-          away.quarter_4 == null
-        ) {
-          return null;
-        }
-        return {
-          Q1: home.quarter_1 + away.quarter_1,
-          Q2: home.quarter_2 + away.quarter_2,
-          Q3: home.quarter_3 + away.quarter_3,
-          Q4: home.quarter_4 + away.quarter_4,
-        };
-      })
-      .filter(Boolean);
   }
 
+  /**
+   * Fetches Head-to-Head games between two teams.
+   */
   async getH2hGames(teamAId, teamBId) {
-    if (teamAId == null || teamBId == null) {
+    try {
+      const response = await fetch(`${this.baseUrl}/games?h2h=${teamAId}-${teamBId}`, {
+        method: 'GET',
+        headers: this.headers,
+      });
+      const data = await response.json();
+      return data.response || [];
+    } catch (error) {
+      console.error(`Error fetching H2H games for ${teamAId} and ${teamBId}:`, error);
       return [];
     }
-    const data = await this._fetch('games', {
-      h2h: `${teamAId}-${teamBId}`,
-    });
-
-    if (!Array.isArray(data.response)) {
-      return [];
-    }
-
-    return data.response
-      .map((game) => {
-        const scores = game.scores || {};
-        if (!scores.home || !scores.away) {
-          return null;
-        }
-        const home = scores.home;
-        const away = scores.away;
-        if (
-          home.quarter_1 == null ||
-          home.quarter_2 == null ||
-          home.quarter_3 == null ||
-          home.quarter_4 == null ||
-          away.quarter_1 == null ||
-          away.quarter_2 == null ||
-          away.quarter_3 == null ||
-          away.quarter_4 == null
-        ) {
-          return null;
-        }
-        return {
-          Q1: home.quarter_1 + away.quarter_1,
-          Q2: home.quarter_2 + away.quarter_2,
-          Q3: home.quarter_3 + away.quarter_3,
-          Q4: home.quarter_4 + away.quarter_4,
-        };
-      })
-      .filter(Boolean);
   }
 }

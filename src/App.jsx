@@ -1,88 +1,113 @@
-import { useState, useEffect } from 'react';
-import MatchCard from './components/MatchCard';
-import { BasketballAPI } from './utils/api';
-import { predictHighestScoringQuarter } from './predictionLogic';
+import { useState } from 'react';
+import './App.css';
+import { BasketballAPI } from './basketballApi';
+import {
+  predictHighestScoringQuarter,
+  calculateLowestScoringQuarter,
+} from './predictionLogic';
 
-const leagues = [
-  { id: 12, name: 'NBA' },
-  { id: 12, name: 'EuroLeague' }, // Note: EuroLeague might have different id, adjust as needed
-];
+const API_KEY = '3c1251bdfb2edb287354c625b3afe11';
 
 function App() {
-  const [matches, setMatches] = useState([]);
-  const [selectedLeague, setSelectedLeague] = useState(leagues[0].id);
-  const [loading, setLoading] = useState(false);
+  const [team1, setTeam1] = useState('');
+  const [team2, setTeam2] = useState('');
+  const [result, setResult] = useState('');
+  const [details, setDetails] = useState('');
+  const [status, setStatus] = useState('');
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetchMatches();
-  }, [selectedLeague]);
-
-  const fetchMatches = async () => {
-    setLoading(true);
+  const resetMessages = () => {
+    setResult('');
+    setDetails('');
+    setStatus('');
     setError('');
+  };
+
+  const handlePredict = async (type) => {
+    resetMessages();
+    if (!team1.trim() || !team2.trim()) {
+      setError('Please enter both team names.');
+      return;
+    }
+
+    setStatus(`Fetching data and predicting ${type}...`);
+
     try {
-      const api = new BasketballAPI();
-      const games = await api.getGames(selectedLeague);
-      // Filter to recent or upcoming, perhaps last 10 or so
-      const recentGames = games.slice(0, 10);
-      setMatches(recentGames);
+      const api = new BasketballAPI(API_KEY);
+      const aId = await api.getTeamId(team1.trim());
+      const bId = await api.getTeamId(team2.trim());
+
+      if (!aId || !bId) {
+        setError(`Could not find one of the teams. Check spelling.`);
+        setStatus('');
+        return;
+      }
+
+      const aGames = await api.getLastGames(aId);
+      const bGames = await api.getLastGames(bId);
+      const h2hGames = await api.getH2hGames(aId, bId);
+
+      if (type === 'highest') {
+        const { predictedQuarter, confidence } = predictHighestScoringQuarter(aGames, bGames, h2hGames);
+        setResult(`Predicted highest scoring quarter: ${predictedQuarter}`);
+        setDetails(`Confidence: ${(confidence * 100).toFixed(0)}%`);
+      } else {
+        const { lowestQuarter, averagePoints } = calculateLowestScoringQuarter(h2hGames.length ? h2hGames : aGames);
+        setResult(`Lowest scoring quarter: ${lowestQuarter}`);
+        setDetails(`Avg points: ${averagePoints.toFixed(1)}`);
+      }
+      setStatus('');
     } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+      setError(`Error: ${err.message}`);
+      setStatus('');
     }
   };
 
-  const handlePredict = async (match) => {
-    const api = new BasketballAPI();
-    const homeId = match.teams.home.id;
-    const awayId = match.teams.away.id;
-
-    const [homeGames, awayGames, h2hGames] = await Promise.all([
-      api.getLastGames(homeId),
-      api.getLastGames(awayId),
-      api.getH2hGames(homeId, awayId),
-    ]);
-
-    const { predictedQuarter, confidence } = predictHighestScoringQuarter(
-      homeGames,
-      awayGames,
-      h2hGames
-    );
-
-    return { quarter: predictedQuarter, confidence };
-  };
-
   return (
-    <div className="min-h-screen bg-gray-900 p-4">
-      <header className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-white">Basketball Prediction Dashboard</h1>
+    <div className="app-container">
+      <header>
+        <h1>Prediction Dashboard</h1>
       </header>
 
-      <div className="mb-4">
-        <label className="text-white mr-2">Select League:</label>
-        <select
-          value={selectedLeague}
-          onChange={(e) => setSelectedLeague(Number(e.target.value))}
-          className="bg-gray-800 text-white p-2 rounded"
-        >
-          {leagues.map((league) => (
-            <option key={league.id} value={league.id}>
-              {league.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      <section className="form-panel">
+        <div className="manual-input-row">
+          <div className="input-group">
+            <input
+              type="text"
+              value={team1}
+              onChange={(e) => setTeam1(e.target.value)}
+              placeholder="Home Team"
+            />
+          </div>
 
-      {loading && <p className="text-white">Loading matches...</p>}
-      {error && <p className="text-red-500">{error}</p>}
+          <div className="vs-circle">VS</div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {matches.map((match) => (
-          <MatchCard key={match.id} match={match} onPredict={handlePredict} />
-        ))}
-      </div>
+          <div className="input-group">
+            <input
+              type="text"
+              value={team2}
+              onChange={(e) => setTeam2(e.target.value)}
+              placeholder="Away Team"
+            />
+          </div>
+        </div>
+
+        <div className="button-group">
+          <button onClick={() => handlePredict('highest')}>Predict Highest</button>
+          <p> </p>
+          <button onClick={() => handlePredict('lowest')}>Predict Lowest</button>
+        </div>
+      </section>
+
+      {status && <div className="status-msg">{status}</div>}
+      {error && <div className="error-msg">{error}</div>}
+      
+      {result && (
+        <div className="result-card">
+          <h2>{result}</h2>
+          <p>{details}</p>
+        </div>
+      )}
     </div>
   );
 }

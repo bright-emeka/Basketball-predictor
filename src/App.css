@@ -3,16 +3,16 @@
   margin: 0 auto;
   padding: 2rem;
   font-family: Arial, sans-serif;
-  color: #1d1d1d;
+  color: #8aa31c;
 }
 
 header {
   text-align: center;
-  margin-bottom: 1.5rem;
+  color: #972218;
 }
 
 header h1 {
-  font-size: clamp(1.8rem, 2.2vw, 2.8rem);
+  font-size: 200%;
   margin: 0;
 }
 
@@ -32,17 +32,16 @@ label {
 
 input {
   width: 100%;
-  padding: 0.8rem 1rem;
   margin-top: 0.5rem;
   border: 1px solid #cbd5e1;
-  border-radius: 12px;
   font-size: 1rem;
   box-sizing: border-box;
+  
 }
 
 .teams-row {
-  display: grid;
-  gap: 1rem;
+  display:flex;
+  gap:unset;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   margin-bottom: 1rem;
@@ -65,14 +64,14 @@ button {
   border: none;
   border-radius: 12px;
   background: #2f6ce5;
-  color: white;
+  color: rgb(230, 46, 46);
   font-size: 1rem;
   cursor: pointer;
   transition: background 0.2s ease;
 }
 
 button:hover {
-  background: #2557c0;
+  background: #d1d40d;
 }
 
 .status,
@@ -104,7 +103,7 @@ button:hover {
 footer {
   margin-top: 1.75rem;
   text-align: center;
-  color: #475569;
+  color: #4fd395;
 }
 
 footer a {

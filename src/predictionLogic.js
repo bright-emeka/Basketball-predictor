@@ -1,81 +1,103 @@
-const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+/**
+ * Predicts which quarter will have the highest total points.
+ * @param {Array} teamAGames - Recent games for Team A
+ * @param {Array} teamBGames - Recent games for Team B
+ * @param {Array} h2hGames - Direct matches between Team A and Team B
+ * @returns {Object} { predictedQuarter: string, confidence: number }
+ */
+export function predictHighestScoringQuarter(teamAGames, teamBGames, h2hGames) {
+    const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+    const scores = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 };
+    const frequency = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 };
 
-export function getHighestScoringQuarter(games) {
-  const counts = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 };
-  for (const game of games) {
-    if (!quarters.every((q) => q in game)) {
-      throw new Error('Game data missing quarter scores');
-    }
-    const maxQuarter = quarters.reduce((best, q) => (game[q] > game[best] ? q : best), 'Q1');
-    counts[maxQuarter] += 1;
-  }
+    const processGames = (games, weight) => {
+        games.forEach(game => {
+            const qScores = game.scores;
+            if (qScores && qScores.home && qScores.away) {
+                quarters.forEach(q => {
+                    const total = (qScores.home[q] || 0) + (qScores.away[q] || 0);
+                    scores[q] += total * weight;
+                });
 
-  const maxCount = Math.max(...Object.values(counts));
-  const candidates = quarters.filter((q) => counts[q] === maxCount);
-  return candidates[0];
+                // Find which quarter was actually highest in this specific game
+                let maxVal = -1;
+                let maxQ = 'Q1';
+                quarters.forEach(q => {
+                    const total = (qScores.home[q] || 0) + (qScores.away[q] || 0);
+                    if (total > maxVal) {
+                        maxVal = total;
+                        maxQ = q;
+                    }
+                });
+                frequency[maxQ] += weight;
+            }
+        });
+    };
+
+    // H2H is the most important (Weight: 3)
+    processGames(h2hGames, 3);
+    // Recent form is important (Weight: 1)
+    processGames(teamAGames, 1);
+    processGames(teamBGames, 1);
+
+    // Determine the winner based on combined frequency and point totals
+    let predictedQuarter = 'Q1';
+    let maxScore = -1;
+
+    quarters.forEach(q => {
+        if (frequency[q] > maxScore) {
+            maxScore = frequency[q];
+            predictedQuarter = q;
+        }
+    });
+
+    // Simple confidence calculation based on frequency dominance
+    const totalFreq = Object.values(frequency).reduce((a, b) => a + b, 0);
+    const confidence = totalFreq > 0 ? (frequency[predictedQuarter] / totalFreq) : 0;
+
+    return { 
+        predictedQuarter, 
+        confidence: Math.min(confidence + 0.2, 0.95) // Normalize for UI
+    };
 }
 
-export function predictHighestScoringQuarter(teamAGames, teamBGames, h2hGames = []) {
-  const aCounts = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 };
-  const bCounts = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 };
-
-  for (const game of teamAGames) {
-    const maxQ = getHighestScoringQuarter([game]);
-    aCounts[maxQ] += 1;
-  }
-
-  for (const game of teamBGames) {
-    const maxQ = getHighestScoringQuarter([game]);
-    bCounts[maxQ] += 1;
-  }
-
-  const combinedCounts = quarters.reduce((acc, q) => {
-    acc[q] = aCounts[q] + bCounts[q];
-    return acc;
-  }, {});
-
-  if (h2hGames.length) {
-    const h2hQuarter = getHighestScoringQuarter(h2hGames);
-    combinedCounts[h2hQuarter] += 0.3;
-  }
-
-  const maxCount = Math.max(...Object.values(combinedCounts));
-  const candidates = quarters.filter((q) => combinedCounts[q] === maxCount);
-  const predictedQuarter = candidates[0];
-  const totalCounts = Object.values(combinedCounts).reduce((sum, value) => sum + value, 0);
-  const confidence = totalCounts > 0 ? maxCount / totalCounts : 0;
-
-  return {
-    predictedQuarter,
-    confidence,
-  };
-}
-
+/**
+ * Calculates which quarter historically has the lowest points.
+ * @param {Array} games - List of games to analyze
+ * @returns {Object} { lowestQuarter: string, averagePoints: number }
+ */
 export function calculateLowestScoringQuarter(games) {
-  if (!games.length) {
-    return { lowestQuarter: null, averagePoints: null };
-  }
+    if (!games.length) return { lowestQuarter: null, averagePoints: 0 };
 
-  const quarterTotals = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 };
+    const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+    const totals = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 };
+    let gameCount = 0;
 
-  for (const game of games) {
-    if (!quarters.every((q) => q in game)) {
-      return { lowestQuarter: null, averagePoints: null };
-    }
-    for (const q of quarters) {
-      quarterTotals[q] += game[q];
-    }
-  }
+    games.forEach(game => {
+        const qScores = game.scores;
+        if (qScores && qScores.home && qScores.away) {
+            quarters.forEach(q => {
+                totals[q] += (qScores.home[q] || 0) + (qScores.away[q] || 0);
+            });
+            gameCount++;
+        }
+    });
 
-  const numGames = games.length;
-  const averages = quarters.reduce((acc, q) => {
-    acc[q] = quarterTotals[q] / numGames;
-    return acc;
-  }, {});
+    let lowestQuarter = 'Q1';
+    let minScore = Infinity;
 
-  const lowestQuarter = quarters.reduce((best, q) => {
-    return averages[q] < averages[best] ? q : best;
-  }, 'Q1');
+    quarters.forEach(q => {
+        const avg = totals[q] / gameCount;
+        if (avg < minScore) {
+            minScore = avg;
+            lowestQuarter = q;
+        }
+    });
 
-  return { lowestQuarter, averagePoints: averages[lowestQuarter] };
+    const averagePointsPerGame = Object.values(totals).reduce((a, b) => a + b, 0) / gameCount;
+
+    return { 
+        lowestQuarter, 
+        averagePoints: averagePointsPerGame 
+    };
 }
